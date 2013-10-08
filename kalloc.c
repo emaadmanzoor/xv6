@@ -11,6 +11,7 @@
 
 void freerange(void *vstart, void *vend);
 extern char end[]; // first address after kernel loaded from ELF file
+int counter = 0;
 
 struct run {
   struct run *next;
@@ -74,6 +75,8 @@ kfree(char *v)
   kmem.freelist = r;
   if(kmem.use_lock)
     release(&kmem.lock);
+  if (counter > 0)
+    counter -= 1;
 }
 
 // Allocate one 4096-byte page of physical memory.
@@ -88,9 +91,16 @@ kalloc(void)
     acquire(&kmem.lock);
   r = kmem.freelist;
   if(r)
+  {
     kmem.freelist = r->next;
+    counter += 1;
+  }
   if(kmem.use_lock)
     release(&kmem.lock);
   return (char*)r;
 }
 
+int
+getcounter(void) {
+  return counter;
+}
