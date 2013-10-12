@@ -12,6 +12,7 @@
 void freerange(void *vstart, void *vend);
 extern char end[]; // first address after kernel loaded from ELF file
 int counter = 0;
+int enabled = 1;
 
 struct run {
   struct run *next;
@@ -32,15 +33,19 @@ void
 kinit1(void *vstart, void *vend)
 {
   initlock(&kmem.lock, "kmem");
+  enabled = 0;
   kmem.use_lock = 0;
   freerange(vstart, vend);
+  enabled = 1;
 }
 
 void
 kinit2(void *vstart, void *vend)
 {
+  enabled = 0;
   freerange(vstart, vend);
   kmem.use_lock = 1;
+  enabled = 1;
 }
 
 void
@@ -75,7 +80,7 @@ kfree(char *v)
   kmem.freelist = r;
   if(kmem.use_lock)
     release(&kmem.lock);
-  if (counter > 0)
+  if (counter > 0 && enabled)
     counter -= 1;
 }
 
@@ -93,7 +98,8 @@ kalloc(void)
   if(r)
   {
     kmem.freelist = r->next;
-    counter += 1;
+    if (enabled)
+      counter += 1;
   }
   if(kmem.use_lock)
     release(&kmem.lock);
