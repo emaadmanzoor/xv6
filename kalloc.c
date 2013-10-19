@@ -77,12 +77,9 @@ kfree(char *v)
   uint p = v2p(v);
   uint bitIdx = p / PGSIZE;
 
-  cprintf("Free v: %x p: %x\n", v, (char*)p);
   if(kmem.use_lock)
     acquire(&kmem.lock);
-  cprintf("Before Free: Bitmap[%d] = %x\n", bitIdx / 8, bitmap[bitIdx/8]);
   bitmap_clear(bitmap, bitIdx);
-  cprintf("After Free: Bitmap[%d] = %x\n", bitIdx / 8, bitmap[bitIdx/8]);
   if(kmem.use_lock)
     release(&kmem.lock);
 }
@@ -111,9 +108,10 @@ kalloc(void)
   uint p = freeBitIdx * PGSIZE;
   char *v = (char*) p2v(p);
   kmem.lastBitIdx = freeBitIdx + 1;
-  
+
   if(kmem.use_lock)
     release(&kmem.lock);
+
   return (char*)v;
 }
 
@@ -140,14 +138,15 @@ bitmap_ffz(uchar* const bitmap, uint startBitIdx, uint endBitIdx)
     uchar word = bitmap[wordIdx];
     if ((uchar)~word == 0) continue;
 
-    uint bitIdx;
+    uint bitInWordIdx;
     if (wordIdx == startWordIdx)
-      bitIdx = startBitIdx;
+      bitInWordIdx = startBitIdx % CHAR_BIT;
     else
-      bitIdx = 0;
-    for (; bitIdx < CHAR_BIT; bitIdx++) {
-      if ((uchar)(word & (1 << (CHAR_BIT - bitIdx - 1))) == 0) {
-        return wordIdx * CHAR_BIT + bitIdx;
+      bitInWordIdx = 0;
+
+    for (; bitInWordIdx < CHAR_BIT; bitInWordIdx++) {
+      if ((uchar)(word & (1 << (CHAR_BIT - bitInWordIdx - 1))) == 0) {
+        return wordIdx * CHAR_BIT + bitInWordIdx;
       }
     } 
   } 
