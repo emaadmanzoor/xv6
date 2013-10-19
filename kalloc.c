@@ -92,7 +92,7 @@ kalloc(void)
   if(kmem.use_lock)
     acquire(&kmem.lock);
 
-  int freeBitIdx = bitmap_ffz(bitmap, kmem.lastBitIdx, BITMAPSIZE);
+  int freeBitIdx = bitmap_ffz(bitmap, kmem.lastBitIdx, BITMAPSIZE * CHAR_BIT);
   if (freeBitIdx < 0) {
     freeBitIdx = bitmap_ffz(bitmap, 0, kmem.lastBitIdx);
   }
