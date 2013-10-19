@@ -14,7 +14,6 @@ void freerange(void *vstart, void *vend);
 void bitmap_set(uchar* const, uint);
 void bitmap_clear(uchar* const, uint);
 int bitmap_ffz(uchar* const, uint, uint);
-uint log2(uint);
 
 extern char end[]; // first address after kernel loaded from ELF file
 uchar* const bitmap = (uchar*) end;
@@ -152,13 +151,4 @@ bitmap_ffz(uchar* const bitmap, uint startBitIdx, uint endBitIdx)
   } 
 
   return -1;
-}
-
-uint
-log2(uint x)
-{
-  uint log = 0;
-  while (x >>= 1)
-    log++;
-  return log;
 }
