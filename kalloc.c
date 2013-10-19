@@ -17,21 +17,15 @@ int bitmap_ffz(uchar* const, uint, uint);
 uint log2(uint);
 
 extern char end[]; // first address after kernel loaded from ELF file
+uchar* const bitmap = (uchar*) end;
 
 struct run {
   struct run *next;
 };
 
-/*struct {
-  struct spinlock lock;
-  int use_lock;
-  struct run *freelist;
-} kmem;*/
-
 struct {
   struct spinlock lock;
   int use_lock;
-  uchar* bitmap;
   uint lastBitIdx;
 } kmem;
 
@@ -43,9 +37,8 @@ struct {
 void
 kinit1(void *vstart, void *vend)
 {
-  kmem.bitmap = (uchar*) end;
   kmem.lastBitIdx = 0;
-  memset(kmem.bitmap, -1, BITMAPSIZE);
+  memset(bitmap, -1, BITMAPSIZE);
   initlock(&kmem.lock, "kmem");
   kmem.use_lock = 0;
   freerange(vstart, vend);
@@ -75,8 +68,6 @@ freerange(void *vstart, void *vend)
 void
 kfree(char *v)
 {
-  //struct run *r;
-
   if((uint)v % PGSIZE || v < (end + BITMAPSIZE) || v2p(v) >= PHYSTOP)
     panic("kfree");
 
@@ -86,22 +77,14 @@ kfree(char *v)
   uint p = v2p(v);
   uint bitIdx = p / PGSIZE;
 
-  //cprintf("Free v: %x p: %x\n", v, (char*)p);
+  cprintf("Free v: %x p: %x\n", v, (char*)p);
   if(kmem.use_lock)
     acquire(&kmem.lock);
-  //cprintf("Before Free: Bitmap[%d] = %x\n", bitIdx / 8, kmem.bitmap[bitIdx/8]);
-  bitmap_clear(kmem.bitmap, bitIdx);
-  //cprintf("After Free: Bitmap[%d] = %x\n", bitIdx / 8, kmem.bitmap[bitIdx/8]);
+  cprintf("Before Free: Bitmap[%d] = %x\n", bitIdx / 8, bitmap[bitIdx/8]);
+  bitmap_clear(bitmap, bitIdx);
+  cprintf("After Free: Bitmap[%d] = %x\n", bitIdx / 8, bitmap[bitIdx/8]);
   if(kmem.use_lock)
     release(&kmem.lock);
-
-  /*if(kmem.use_lock)
-    acquire(&kmem.lock);
-  r = (struct run*)v;
-  r->next = kmem.freelist;
-  kmem.freelist = r;
-  if(kmem.use_lock)
-    release(&kmem.lock);*/
 }
 
 // Allocate one 4096-byte page of physical memory.
@@ -110,44 +93,28 @@ kfree(char *v)
 char*
 kalloc(void)
 {
-  //struct run *r;
-
   if(kmem.use_lock)
     acquire(&kmem.lock);
 
-  int freeBitIdx = bitmap_ffz(kmem.bitmap, kmem.lastBitIdx, BITMAPSIZE);
-  //cprintf("Alloc got freeBitIdx from last=%d to BITMAPSIZE as %d\n", kmem.lastBitIdx, freeBitIdx);
+  int freeBitIdx = bitmap_ffz(bitmap, kmem.lastBitIdx, BITMAPSIZE);
   if (freeBitIdx < 0) {
-    freeBitIdx = bitmap_ffz(kmem.bitmap, 0, kmem.lastBitIdx);
-    //cprintf("Alloc got freeBitIdx from 0 to last-1=%d as %d\n", kmem.lastBitIdx-1, freeBitIdx);
+    freeBitIdx = bitmap_ffz(bitmap, 0, kmem.lastBitIdx);
   }
 
   if (freeBitIdx < 0) {
-    cprintf("Alloc got freeBitIdx last=%d got=%d\n", kmem.lastBitIdx-1, freeBitIdx);
-    cprintf("No memory, returning\n");
     if(kmem.use_lock)
       release(&kmem.lock);
     return 0;
   }
 
-  bitmap_set(kmem.bitmap, freeBitIdx);
+  bitmap_set(bitmap, freeBitIdx);
   uint p = freeBitIdx * PGSIZE;
   char *v = (char*) p2v(p);
   kmem.lastBitIdx = freeBitIdx + 1;
   
   if(kmem.use_lock)
     release(&kmem.lock);
-  //cprintf("Alloc v: %x p: %x\n", v, (char*)p);
   return (char*)v;
-
-  /*if(kmem.use_lock)
-    acquire(&kmem.lock);
-  r = kmem.freelist;
-  if(r)
-    kmem.freelist = r->next;
-  if(kmem.use_lock)
-    release(&kmem.lock);
-  return (char*)r;*/
 }
 
 void
@@ -177,7 +144,7 @@ bitmap_ffz(uchar* const bitmap, uint startBitIdx, uint endBitIdx)
     if (wordIdx == startWordIdx)
       bitIdx = startBitIdx;
     else
-      bitIdx = 0
+      bitIdx = 0;
     for (; bitIdx < CHAR_BIT; bitIdx++) {
       if ((uchar)(word & (1 << (CHAR_BIT - bitIdx - 1))) == 0) {
         return wordIdx * CHAR_BIT + bitIdx;
