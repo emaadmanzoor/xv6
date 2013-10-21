@@ -8,15 +8,15 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "spinlock.h"
-#include "limits.h"
+#include "stdint.h"
 
 void freerange(void *vstart, void *vend);
-void bitmap_set(uchar* const, uint);
-void bitmap_clear(uchar* const, uint);
-int bitmap_ffz(uchar* const, uint, uint);
+void bitmap_set(uint8_t* const, uint);
+void bitmap_clear(uint8_t* const, uint);
+int bitmap_ffs(uint8_t* const, uint, uint);
 
 extern char end[]; // first address after kernel loaded from ELF file
-uchar* const bitmap = (uchar*) end;
+uint8_t* const bitmap = (uint8_t*) end;
 
 struct run {
   struct run *next;
@@ -37,7 +37,7 @@ void
 kinit1(void *vstart, void *vend)
 {
   kmem.lastBitIdx = 0;
-  memset(bitmap, -1, BITMAPSIZE);
+  memset(bitmap, 0, BITMAPSIZE);
   initlock(&kmem.lock, "kmem");
   kmem.use_lock = 0;
   freerange(vstart, vend);
@@ -78,7 +78,7 @@ kfree(char *v)
 
   if(kmem.use_lock)
     acquire(&kmem.lock);
-  bitmap_clear(bitmap, bitIdx);
+  bitmap_set(bitmap, bitIdx);
   if(kmem.use_lock)
     release(&kmem.lock);
 }
@@ -92,9 +92,9 @@ kalloc(void)
   if(kmem.use_lock)
     acquire(&kmem.lock);
 
-  int freeBitIdx = bitmap_ffz(bitmap, kmem.lastBitIdx, BITMAPSIZE * CHAR_BIT);
+  int freeBitIdx = bitmap_ffs(bitmap, kmem.lastBitIdx, BITMAPSIZE * 8);
   if (freeBitIdx < 0) {
-    freeBitIdx = bitmap_ffz(bitmap, 0, kmem.lastBitIdx);
+    freeBitIdx = bitmap_ffs(bitmap, 0, kmem.lastBitIdx);
   }
 
   if (freeBitIdx < 0) {
@@ -103,7 +103,7 @@ kalloc(void)
     return 0;
   }
 
-  bitmap_set(bitmap, freeBitIdx);
+  bitmap_clear(bitmap, freeBitIdx);
   uint p = freeBitIdx * PGSIZE;
   char *v = (char*) p2v(p);
   kmem.lastBitIdx = freeBitIdx + 1;
@@ -115,39 +115,29 @@ kalloc(void)
 }
 
 void
-bitmap_set(uchar* const bitmap, uint bitIdx)
+bitmap_set(uint8_t* const bitmap, uint bitIdx)
 {
-  bitmap[bitIdx / CHAR_BIT] |= (1 << (CHAR_BIT - (bitIdx % CHAR_BIT) - 1));
+  bitmap[bitIdx / 8] |= (1 << (bitIdx % 8));
 }
 
 void
-bitmap_clear(uchar* const bitmap, uint bitIdx)
+bitmap_clear(uint8_t* const bitmap, uint bitIdx)
 {
-  bitmap[bitIdx / CHAR_BIT] &= ~(1 << (CHAR_BIT - (bitIdx % CHAR_BIT) - 1));
+  bitmap[bitIdx / 8] &= ~(1 << (bitIdx % 8));
 }
 
 int
-bitmap_ffz(uchar* const bitmap, uint startBitIdx, uint endBitIdx)
+bitmap_ffs(uint8_t* const bitmap, uint startBitIdx, uint endBitIdx)
 {
-  uint startWordIdx = startBitIdx / CHAR_BIT;
-  uint endWordIdx = endBitIdx / CHAR_BIT;
+  uint startWordIdx = startBitIdx / 8;
+  uint endWordIdx = endBitIdx / 8;
   
   uint wordIdx;
   for (wordIdx = startWordIdx; wordIdx < endWordIdx; wordIdx++) {
-    uchar word = bitmap[wordIdx];
-    if ((uchar)~word == 0) continue;
-
-    uint bitInWordIdx;
-    if (wordIdx == startWordIdx)
-      bitInWordIdx = startBitIdx % CHAR_BIT;
-    else
-      bitInWordIdx = 0;
-
-    for (; bitInWordIdx < CHAR_BIT; bitInWordIdx++) {
-      if ((uchar)(word & (1 << (CHAR_BIT - bitInWordIdx - 1))) == 0) {
-        return wordIdx * CHAR_BIT + bitInWordIdx;
-      }
-    } 
+    uint8_t word = bitmap[wordIdx];
+    if (!word) continue;
+    uint8_t bitInWordIdx = (uint8_t) __builtin_ctz(word);
+    return wordIdx * 8 + bitInWordIdx;
   } 
 
   return -1;
