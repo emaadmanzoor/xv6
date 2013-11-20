@@ -10,7 +10,11 @@
 #include "spinlock.h"
 
 void freerange(void *vstart, void *vend);
+int pgused(void);
 extern char end[]; // first address after kernel loaded from ELF file
+
+static int num_used_pgs = 0;
+static int used_counting_enabled = 1;
 
 struct run {
   struct run *next;
@@ -32,13 +36,17 @@ kinit1(void *vstart, void *vend)
 {
   initlock(&kmem.lock, "kmem");
   kmem.use_lock = 0;
+  used_counting_enabled = 0;
   freerange(vstart, vend);
+  used_counting_enabled = 1;
 }
 
 void
 kinit2(void *vstart, void *vend)
 {
+  used_counting_enabled = 0;
   freerange(vstart, vend);
+  used_counting_enabled = 1;
   kmem.use_lock = 1;
 }
 
@@ -72,6 +80,7 @@ kfree(char *v)
   r = (struct run*)v;
   r->next = kmem.freelist;
   kmem.freelist = r;
+  if (used_counting_enabled) num_used_pgs--;
   if(kmem.use_lock)
     release(&kmem.lock);
 }
@@ -87,10 +96,17 @@ kalloc(void)
   if(kmem.use_lock)
     acquire(&kmem.lock);
   r = kmem.freelist;
-  if(r)
+  if(r) {
     kmem.freelist = r->next;
+    if (used_counting_enabled) num_used_pgs++;
+  }
   if(kmem.use_lock)
     release(&kmem.lock);
   return (char*)r;
 }
 
+int
+pgused(void)
+{
+  return num_used_pgs;
+}

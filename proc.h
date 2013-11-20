@@ -65,6 +65,8 @@ struct proc {
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
+  void* ksmsegs[MAXKSMIDS];    // Start VAs of attached shared memory segments
+  uint ksmstart;              // min(ksmsegs)
   char name[16];               // Process name (debugging)
 };
 

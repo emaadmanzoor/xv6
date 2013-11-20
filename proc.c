@@ -70,6 +70,12 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  // Initialize attached shared memory segments
+  int i;
+  for (i = 0; i < MAXKSMIDS; i++)
+    p->ksmsegs[i] = 0;
+  p->ksmstart = KERNBASE;
+
   return p;
 }
 
@@ -142,6 +148,7 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
+
   np->sz = proc->sz;
   np->parent = proc;
   *np->tf = *proc->tf;
@@ -153,6 +160,13 @@ fork(void)
     if(proc->ofile[i])
       np->ofile[i] = filedup(proc->ofile[i]);
   np->cwd = idup(proc->cwd);
+
+  for (i = 0; i < MAXKSMIDS; i++) {
+    void* startva = proc->ksmsegs[i];
+    if(startva)
+      if(ksmattach_proc(i+1, np, startva, 0))
+        copyksmperms(i+1, startva, proc->pgdir, np->pgdir);
+  }
  
   pid = np->pid;
   np->state = RUNNABLE;
@@ -167,7 +181,7 @@ void
 exit(void)
 {
   struct proc *p;
-  int fd;
+  int fd, shmid;
 
   if(proc == initproc)
     panic("init exiting");
@@ -179,6 +193,11 @@ exit(void)
       proc->ofile[fd] = 0;
     }
   }
+
+  // Detach all shared memory segments
+  for (shmid = 0; shmid < MAXKSMIDS; shmid++)
+    if (proc->ksmsegs[shmid])
+      ksmdetach_proc(shmid+1, proc);
 
   iput(proc->cwd);
   proc->cwd = 0;

@@ -98,6 +98,12 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+extern int sys_pgused(void);
+extern int sys_ksmget(void);
+extern int sys_ksmattach(void);
+extern int sys_ksmdetach(void);
+extern int sys_ksmdelete(void);
+extern int sys_ksminfo(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -121,6 +127,12 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_pgused]  sys_pgused,
+[SYS_ksmget]  sys_ksmget,
+[SYS_ksmattach] sys_ksmattach,
+[SYS_ksmdetach] sys_ksmdetach,
+[SYS_ksmdelete] sys_ksmdelete,
+[SYS_ksminfo] sys_ksminfo,
 };
 
 void

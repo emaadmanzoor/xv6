@@ -11,7 +11,7 @@ int
 exec(char *path, char **argv)
 {
   char *s, *last;
-  int i, off;
+  int i, off, shmid;
   uint argc, sz, sp, ustack[3+MAXARG+1];
   struct elfhdr elf;
   struct inode *ip;
@@ -81,6 +81,11 @@ exec(char *path, char **argv)
     if(*s == '/')
       last = s+1;
   safestrcpy(proc->name, last, sizeof(proc->name));
+
+  // Detach from shared memory segments
+  for (shmid = 0; shmid < MAXKSMIDS; shmid++)
+    if (proc->ksmsegs[shmid])
+      ksmdetach_proc(shmid, proc);
 
   // Commit to the user image.
   oldpgdir = proc->pgdir;

@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "ksm.h"
 
 int
 sys_fork(void)
@@ -87,4 +88,83 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+int
+sys_pgused(void)
+{
+  return pgused();
+}
+
+int
+sys_ksmget(void)
+{
+  int key;
+  int size;
+  int flags;
+
+  if(argint(0, &key) < 0)
+    return -1;
+
+  if(argint(1, &size) < 0)
+    return -1;
+
+  if(argint(2, &flags) < 0)
+    return -1;
+
+  return ksmget(key, size, flags);
+}
+
+int
+sys_ksmattach(void)
+{
+  int handle;
+  int flags;
+
+  if(argint(0, &handle) < 0)
+    return -1;
+
+  if(argint(1, &flags) < 0)
+    return -1;
+
+  return (int) ksmattach(handle, flags);
+}
+
+int
+sys_ksmdetach(void)
+{
+  int handle;
+
+  if(argint(0, &handle) < 0)
+    return -1;
+
+  return ksmdetach(handle);
+}
+
+int
+sys_ksmdelete(void)
+{
+  int handle;
+
+  if(argint(0, &handle) < 0)
+    return -1;
+
+  return ksmdelete(handle);
+}
+
+int
+sys_ksminfo(void)
+{
+  int handle;
+  struct ksminfo_t* uksminfo;
+
+  if(argint(0, &handle) < 0)
+    return -1;
+
+  if(argptr(1, (char**) &uksminfo, sizeof(struct ksminfo_t)) < 0)
+    return -1;
+
+  ksminfo(handle, uksminfo);
+
+  return 0;
 }

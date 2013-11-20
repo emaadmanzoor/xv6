@@ -1,4 +1,5 @@
 struct stat;
+struct ksminfo_t;
 
 // system calls
 int fork(void);
@@ -22,6 +23,12 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int pgused(void);
+int ksmget(int, uint, int);
+void* ksmattach(int, int);
+int ksmdetach(int);
+int ksmdelete(int);
+void ksminfo(int, struct ksminfo_t*);
 
 // ulib.c
 int stat(char*, struct stat*);

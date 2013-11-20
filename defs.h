@@ -7,6 +7,7 @@ struct proc;
 struct spinlock;
 struct stat;
 struct superblock;
+struct ksminfo_t;
 
 // bio.c
 void            binit(void);
@@ -66,6 +67,7 @@ char*           kalloc(void);
 void            kfree(char*);
 void            kinit1(void*, void*);
 void            kinit2(void*, void*);
+int             pgused(void);
 
 // kbd.c
 void            kbdintr(void);
@@ -176,6 +178,17 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
+
+// shm.c
+void            ksminit(void);
+int ksmget(const int, const uint, const int);
+void* ksmattach(const int, const int);
+void* ksmattach_proc(const int, struct proc*, void*, const int);
+int ksmdetach(const int);
+int ksmdetach_proc(const int, struct proc*);
+int ksmdelete(const int);
+void ksminfo(const int, struct ksminfo_t*);
+void copyksmperms(int, void*, pde_t*, pde_t*);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
