@@ -67,19 +67,6 @@ ksminit(void)
     segs[i] = ksminfo_kern_init;
 }
 
-// From states:
-//  - k = -1
-//  - k = key
-//
-// To states:
-//  - k = key
-//
-// Returns:
-//  - new id
-//  - old id
-//
-// Errors:
-//  - ENOIDS, out of keys
 int
 ksmget(const int key, const uint size, const int flags)
 {
@@ -154,20 +141,6 @@ ksmattach(const int id, const int rdonly)
   return ksmattach_proc(id, proc, 0, rdonly);
 }
 
-// key[id] = -1 --> ENOKEY
-//
-// key[id] = k, physpages = 0
-//    --> physpages = kalloc(p1,p2, ...)
-//    --> proc->segs[id] -> va = startva
-//    --> proc -> map pages 
-//
-// key[id] = k, physpages = p1,p2,...
-//    --> proc->segs[id] -> va = startva --> ENOVM if out of addresses
-//    --> proc -> map pages 
-//
-// key[id] = k, physpages = p1,p2,..., proc->[id]->va = startva
-//    --> nop
-//
 void*
 ksmattach_proc(const int id_plus_one, struct proc* p, void* startva, const int rdonly)
 {
@@ -342,15 +315,6 @@ ksmdetach(const int id)
   return ksmdetach_proc(id, proc);
 }
 
-// key[id] = -1 --> ENOKEY
-//
-// key[id] = k, physpages = 0, proc->[id] = 0 --> ENOTAT
-//
-// key[id] = k, physpages = p1,p2,..., proc->[id] = 0 --> ENOTAT
-//
-// key[id] = k, physpages = p1,p2,..., proc->[id]->va = startva
-//    --> unmap pages from proc
-//
 int
 ksmdetach_proc(const int id_plus_one, struct proc* p)
 {
@@ -420,18 +384,6 @@ deallocshm(pde_t *pgdir, const uint oldsz, const uint newsz)
   return newsz;
 }
 
-// key[id] = -1 --> ENOKEY
-//
-// key[id] = k, physpages = 0, proc->[id] = startva --> ENOTDT
-//
-// key[id] = k, physpages = 0, proc->[id] = 0 --> key[id] = -1
-//
-// key[id] = k, physpages = p1,p2,..., proc->[id]->va = startva --> ENOTDT
-// 
-// key[id] = k, physpages = p1,p2,..., proc->[id] = startva
-//    --> free physpages
-//    --> key[id] = -1
-//
 int
 ksmdelete(const int id_plus_one)
 {
