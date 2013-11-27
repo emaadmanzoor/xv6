@@ -29,6 +29,10 @@ void* ksmattach(int, int);
 int ksmdetach(int);
 int ksmdelete(int);
 void ksminfo(int, struct ksminfo_t*);
+int sem_get(int, uint);
+int sem_delete(int);
+int sem_wait(int);
+int sem_signal(int);
 
 // ulib.c
 int stat(char*, struct stat*);

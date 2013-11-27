@@ -26,3 +26,7 @@
 #define SYS_ksmdetach 25
 #define SYS_ksmdelete 26
 #define SYS_ksminfo 27
+#define SYS_sem_get     28
+#define SYS_sem_delete  29
+#define SYS_sem_wait    30
+#define SYS_sem_signal  31

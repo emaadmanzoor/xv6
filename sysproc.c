@@ -168,3 +168,42 @@ sys_ksminfo(void)
 
   return 0;
 }
+
+int
+sys_sem_get(void)
+{
+  int name;
+  int value;
+  if(argint(0, &name) < 0)
+    return -1;
+  if(argint(1, &value) < 0)
+    return -1;
+  return sem_get((uint)name, value);
+}
+
+int
+sys_sem_delete(void)
+{
+  int handle;
+  if(argint(0, &handle) < 0)
+    return -1;
+  return sem_delete(handle);
+}
+
+int
+sys_sem_wait(void)
+{
+  int handle;
+  if(argint(0, &handle) < 0)
+    return -1;
+  return sem_wait(handle);
+}
+
+int
+sys_sem_signal(void)
+{
+  int handle;
+  if(argint(0, &handle) < 0)
+    return -1;
+  return sem_signal(handle);
+}

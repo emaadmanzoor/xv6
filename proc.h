@@ -67,6 +67,7 @@ struct proc {
   struct inode *cwd;           // Current directory
   void* ksmsegs[MAXKSMIDS];    // Start VAs of attached shared memory segments
   uint ksmstart;              // min(ksmsegs)
+  uint sems[MAXSEMS];          // semaphores used by this process 
   char name[16];               // Process name (debugging)
 };
 

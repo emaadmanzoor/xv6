@@ -190,5 +190,15 @@ int ksmdelete(const int);
 void ksminfo(const int, struct ksminfo_t*);
 void copyksmperms(int, void*, pde_t*, pde_t*);
 
+// semaphore.c
+void            seminit(void);
+int             sem_get(const uint, int);
+int             sem_get_proc(const uint, int, struct proc*);
+int             sem_delete(const int handle);
+int             sem_delete_proc(const int handle, struct proc*);
+int             sem_wait(const int handle);
+int             sem_signal(const int handle);
+int             sem_get_name(const int handle);
+
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

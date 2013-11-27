@@ -104,6 +104,10 @@ extern int sys_ksmattach(void);
 extern int sys_ksmdetach(void);
 extern int sys_ksmdelete(void);
 extern int sys_ksminfo(void);
+extern int sys_sem_get(void);
+extern int sys_sem_delete(void);
+extern int sys_sem_wait(void);
+extern int sys_sem_signal(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -133,6 +137,10 @@ static int (*syscalls[])(void) = {
 [SYS_ksmdetach] sys_ksmdetach,
 [SYS_ksmdelete] sys_ksmdelete,
 [SYS_ksminfo] sys_ksminfo,
+[SYS_sem_get]     sys_sem_get,
+[SYS_sem_delete]  sys_sem_delete,
+[SYS_sem_wait]    sys_sem_wait,
+[SYS_sem_signal]  sys_sem_signal
 };
 
 void

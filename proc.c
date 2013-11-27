@@ -76,6 +76,10 @@ found:
     p->ksmsegs[i] = 0;
   p->ksmstart = KERNBASE;
 
+  // Initialize semaphores
+  for (i = 0; i < MAXSEMS; i++)
+    p->sems[i] = 0;
+
   return p;
 }
 
@@ -167,6 +171,10 @@ fork(void)
       if(ksmattach_proc(i+1, np, startva, 0))
         copyksmperms(i+1, startva, proc->pgdir, np->pgdir);
   }
+
+  for (i = 0; i < MAXSEMS; i++)
+    if (proc->sems[i] != 0)
+      sem_get_proc(sem_get_name(i), 0, np);
  
   pid = np->pid;
   np->state = RUNNABLE;
@@ -181,7 +189,7 @@ void
 exit(void)
 {
   struct proc *p;
-  int fd, shmid;
+  int fd, shmid, semid;
 
   if(proc == initproc)
     panic("init exiting");
@@ -198,6 +206,10 @@ exit(void)
   for (shmid = 0; shmid < MAXKSMIDS; shmid++)
     if (proc->ksmsegs[shmid])
       ksmdetach_proc(shmid+1, proc);
+
+  for (semid = 0; semid < MAXSEMS; semid++)
+    if (proc->sems[semid] != 0)
+      sem_delete_proc(semid, proc);
 
   iput(proc->cwd);
   proc->cwd = 0;

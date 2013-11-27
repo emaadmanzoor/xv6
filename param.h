@@ -10,4 +10,5 @@
 #define MAXARG       32  // max exec arguments
 #define LOGSIZE      10  // max data sectors in on-disk log
 #define MAXKSMIDS   50  // max number of shared memory segments systemwide
+#define MAXSEMS      20  // max number of semaphores systemwide
 
