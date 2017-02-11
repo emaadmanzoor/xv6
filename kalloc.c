@@ -8,9 +8,15 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "spinlock.h"
+#include "limits.h"
 
 void freerange(void *vstart, void *vend);
+void bitmap_set(uchar* const, uint);
+void bitmap_clear(uchar* const, uint);
+int bitmap_ffz(uchar* const, uint, uint);
+
 extern char end[]; // first address after kernel loaded from ELF file
+uchar* const bitmap = (uchar*) end;
 
 struct run {
   struct run *next;
@@ -19,7 +25,7 @@ struct run {
 struct {
   struct spinlock lock;
   int use_lock;
-  struct run *freelist;
+  uint lastBitIdx;
 } kmem;
 
 // Initialization happens in two phases.
@@ -30,6 +36,8 @@ struct {
 void
 kinit1(void *vstart, void *vend)
 {
+  kmem.lastBitIdx = 0;
+  memset(bitmap, -1, BITMAPSIZE);
   initlock(&kmem.lock, "kmem");
   kmem.use_lock = 0;
   freerange(vstart, vend);
@@ -59,19 +67,18 @@ freerange(void *vstart, void *vend)
 void
 kfree(char *v)
 {
-  struct run *r;
-
-  if((uint)v % PGSIZE || v < end || v2p(v) >= PHYSTOP)
+  if((uint)v % PGSIZE || v < (end + BITMAPSIZE) || v2p(v) >= PHYSTOP)
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
   memset(v, 1, PGSIZE);
 
+  uint p = v2p(v);
+  uint bitIdx = p / PGSIZE;
+
   if(kmem.use_lock)
     acquire(&kmem.lock);
-  r = (struct run*)v;
-  r->next = kmem.freelist;
-  kmem.freelist = r;
+  bitmap_clear(bitmap, bitIdx);
   if(kmem.use_lock)
     release(&kmem.lock);
 }
@@ -82,15 +89,66 @@ kfree(char *v)
 char*
 kalloc(void)
 {
-  struct run *r;
-
   if(kmem.use_lock)
     acquire(&kmem.lock);
-  r = kmem.freelist;
-  if(r)
-    kmem.freelist = r->next;
+
+  int freeBitIdx = bitmap_ffz(bitmap, kmem.lastBitIdx, BITMAPSIZE * CHAR_BIT);
+  if (freeBitIdx < 0) {
+    freeBitIdx = bitmap_ffz(bitmap, 0, kmem.lastBitIdx);
+  }
+
+  if (freeBitIdx < 0) {
+    if(kmem.use_lock)
+      release(&kmem.lock);
+    return 0;
+  }
+
+  bitmap_set(bitmap, freeBitIdx);
+  uint p = freeBitIdx * PGSIZE;
+  char *v = (char*) p2v(p);
+  kmem.lastBitIdx = freeBitIdx + 1;
+
   if(kmem.use_lock)
     release(&kmem.lock);
-  return (char*)r;
+
+  return (char*)v;
 }
 
+void
+bitmap_set(uchar* const bitmap, uint bitIdx)
+{
+  bitmap[bitIdx / CHAR_BIT] |= (1 << (CHAR_BIT - (bitIdx % CHAR_BIT) - 1));
+}
+
+void
+bitmap_clear(uchar* const bitmap, uint bitIdx)
+{
+  bitmap[bitIdx / CHAR_BIT] &= ~(1 << (CHAR_BIT - (bitIdx % CHAR_BIT) - 1));
+}
+
+int
+bitmap_ffz(uchar* const bitmap, uint startBitIdx, uint endBitIdx)
+{
+  uint startWordIdx = startBitIdx / CHAR_BIT;
+  uint endWordIdx = endBitIdx / CHAR_BIT;
+  
+  uint wordIdx;
+  for (wordIdx = startWordIdx; wordIdx < endWordIdx; wordIdx++) {
+    uchar word = bitmap[wordIdx];
+    if ((uchar)~word == 0) continue;
+
+    uint bitInWordIdx;
+    if (wordIdx == startWordIdx)
+      bitInWordIdx = startBitIdx % CHAR_BIT;
+    else
+      bitInWordIdx = 0;
+
+    for (; bitInWordIdx < CHAR_BIT; bitInWordIdx++) {
+      if ((uchar)(word & (1 << (CHAR_BIT - bitInWordIdx - 1))) == 0) {
+        return wordIdx * CHAR_BIT + bitInWordIdx;
+      }
+    } 
+  } 
+
+  return -1;
+}

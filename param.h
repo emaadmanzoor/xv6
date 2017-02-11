@@ -9,4 +9,6 @@
 #define ROOTDEV       1  // device number of file system root disk
 #define MAXARG       32  // max exec arguments
 #define LOGSIZE      10  // max data sectors in on-disk log
+#define RAMSIZEMB   512  // amount of physical memory in MB
+#define BITMAPSIZE (RAMSIZEMB * 1024 * 1024 / PGSIZE) / 8  // bitmap size in bytes
 
